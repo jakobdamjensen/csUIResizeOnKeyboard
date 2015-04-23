@@ -28,15 +28,17 @@ limitations under the License.
 - (void)preventPan: (CDVInvokedUrlCommand*)command
 {
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    
     [center addObserver:self
-               selector:@selector(keyboardDidShow:)
-                   name:UIKeyboardDidShowNotification
+               selector:@selector(keyboardWillShow:)
+                   name:UIKeyboardWillShowNotification
                  object:nil];
     [center addObserver:self
-               selector:@selector(keyboardDidHide:)
-                   name:UIKeyboardDidHideNotification
+               selector:@selector(keyboardWillHide:)
+                   name:UIKeyboardWillHideNotification
                  object:nil];
 
+    
     [self returnOk:command];
 }
 
@@ -48,25 +50,41 @@ limitations under the License.
     [self returnOk:command];
 }
 
-
 #pragma mark -
 #pragma mark Pan prevention event handlers
 
-- (void)keyboardDidShow: (NSNotification*)notification
-{
-    NSDictionary *info = [notification userInfo];
-    NSValue *sizeInfo = [info objectForKey:UIKeyboardFrameEndUserInfoKey];
-    CGFloat keyboardHeight = [sizeInfo CGRectValue].size.height;
 
-    CGRect bounds = [[UIScreen mainScreen] bounds];
-    bounds.size.height -= keyboardHeight;
-    self.webView.frame = bounds;
+
+- (void)keyboardWillShow:(NSNotification *)note {
+    NSDictionary *userInfo = note.userInfo;
+    NSTimeInterval duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
+    
+    CGRect keyboardFrameEnd = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    keyboardFrameEnd = [self.webView convertRect:keyboardFrameEnd fromView:nil];
+    
+    [self.webView setNeedsLayout];
+    //baseConstraint.constant = 211
+    [self.webView setNeedsUpdateConstraints];
+    
+    [UIView animateWithDuration:duration delay:0 options:UIViewAnimationOptionBeginFromCurrentState | curve animations:^{
+        self.webView.frame = CGRectMake(0, 0, keyboardFrameEnd.size.width, keyboardFrameEnd.origin.y);
+    } completion:nil];
 }
 
-- (void)keyboardDidHide: (NSNotification*)notification
-{
-    [self resetViewSize];
+- (void)keyboardWillHide:(NSNotification *)note {
+    NSDictionary *userInfo = note.userInfo;
+    NSTimeInterval duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
+    
+    CGRect keyboardFrameEnd = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    keyboardFrameEnd = [self.webView convertRect:keyboardFrameEnd fromView:nil];
+    
+    [UIView animateWithDuration:duration delay:0 options:UIViewAnimationOptionBeginFromCurrentState | curve animations:^{
+        self.webView.frame = CGRectMake(0, 0, keyboardFrameEnd.size.width, keyboardFrameEnd.origin.y);
+    } completion:nil];
 }
+
 
 
 #pragma mark -
